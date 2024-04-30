@@ -4,41 +4,78 @@ using UnityEngine;
 
 public class WallGenerator : MonoBehaviour
 {
+    [SerializeField] bool isStart = false;
     [SerializeField] float wallHeight = 3.0f; // Height of the wall in meters
-    [Header("Green side")]
-    [SerializeField] WallGenerator GreenNextWall, GreenPreviousWall;
-    [Header("Red side")]
-    [SerializeField] WallGenerator RedNextWall, RedPreviousWall;
+    [SerializeField] WallGenerator nextPoint;
     // Start is called before the first frame update
+
+    List<Vector3> meshVertices;
+    List<int> meshTriangles;
+    List<Vector2> points;
     void Start()
     {
-        if(GreenPreviousWall == null && GreenNextWall != null){
-            Debug.Log($"Using Points {GreenSide()} and {GreenNextWall.GreenSide()}");
-            MakeQuadMeshUsingPoints(GreenSide(), GreenNextWall.GreenSide());
+        if(isStart){
+            points = new List<Vector2>();
+            meshVertices = new List<Vector3>();
+            meshTriangles = new List<int>();
+            points.Add(GetPoint());
+            while(nextPoint != null){
+                points.Add(nextPoint.GetPoint());
+                nextPoint = nextPoint.GetNextPoint();
+            }
+            for(int i = 0; i < points.Count - 1; i++){
+                AddPointPairToMesh(points[i], points[i + 1]);
+            }
+            GenerateMeshFromLists();
         }
     }
-    public Vector2 GreenSide(){
-        //get a point -0.5 on the local x axis accounting for scale
-        Vector3 point1 = new Vector3(-0.5f * transform.localScale.x, 0, 0);
-        point1 = transform.TransformPoint(point1);
-        //Debug.DrawRay(transform.TransformPoint(point1), Vector3.up, Color.blue, 1000f);
-        return new Vector2(point1.x, point1.z);
+    WallGenerator GetNextPoint(){
+        return nextPoint;
     }
-    public Vector2 RedSide(){
-        //get a point 0.5 on the local x axis accounting for scale
-        Vector2 point1 = new Vector2(0.5f * transform.localScale.x, 0);
-        return transform.TransformPoint(point1);
+    Vector2 GetPoint(){
+        return new Vector2(transform.position.x, transform.position.z);
     }
 
-    void MakeQuadMeshUsingPoints(Vector2 point1, Vector2 point2){
+    void AddPointPairToMesh(Vector2 point1, Vector2 point2){
         Vector3[] points = {new Vector3(point1.x, 0, point1.y), new Vector3(point2.x, 0, point2.y), new Vector3(point2.x, wallHeight, point2.y), new Vector3(point1.x, wallHeight, point1.y)};
-        for(int i = 0; i < points.Length; i++){ points[i] = transform.InverseTransformPoint(points[i]); }
-        int[] triangles = {0, 1, 2, 0, 2, 3};
-        Mesh mesh = new Mesh { vertices = points, triangles = triangles };
+        for(int i = 0; i < points.Length; i++){ meshVertices.Add(points[i]); }
+        int baseIndex = meshVertices.Count - points.Length;
+        
+        int[] triangles = {baseIndex, 1 + baseIndex, 2 + baseIndex, baseIndex, 2 + baseIndex, 3 + baseIndex};
+        for(int i = 0; i < triangles.Length; i++){ meshTriangles.Add(triangles[i]); }
+    }
+    void GenerateMeshFromLists(){
+        Vector3[] vertices = new Vector3[meshVertices.Count];
+        for(int i = 0; i < meshVertices.Count; i++){
+            vertices[i] = transform.InverseTransformPoint(meshVertices[i]);
+        }
+        int[] triangles = meshTriangles.ToArray();
+        Mesh mesh = new Mesh { vertices = vertices, triangles = triangles };
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         mesh.Optimize();
         GetComponent<MeshFilter>().mesh = mesh;
-        Debug.Log("Mesh created");
+    }
+
+    public void CreateNextPoint()
+    {
+        GameObject newObject = Instantiate(gameObject, transform.position, Quaternion.identity);
+        WallGenerator newWallGenerator = newObject.GetComponent<WallGenerator>();
+        this.nextPoint = newWallGenerator;
+        //if this object ends with a (number) then increment the number
+        //if this object ends with a letter then add a 1 to the end
+        if (gameObject.name.EndsWith(")"))
+        {
+            int index = gameObject.name.LastIndexOf("(");
+            string newName = gameObject.name.Substring(0, index);
+            int number = int.Parse(gameObject.name.Substring(index + 1, gameObject.name.Length - index - 2));
+            newObject.name = newName + "(" + (number + 1) + ")";
+        }
+        else
+        {
+            newObject.name = newObject.name + " 1";
+        }
+        //select the new object in editor
+        UnityEditor.Selection.activeObject = newObject;
     }
 }
