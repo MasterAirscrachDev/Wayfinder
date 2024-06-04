@@ -9,7 +9,7 @@ using System;
 public class PathFinder : MonoBehaviour
 {
     [SerializeField] string startPoint, endPoint;
-    [SerializeField] float speed = 3f;
+    [SerializeField] float speed = 3f, closenessBias = 3f;
     Vector2[] nodes;
     // Start is called before the first frame update
     void Start()
@@ -60,7 +60,34 @@ public class PathFinder : MonoBehaviour
             { Debug.DrawLine(Flat3d(path[i]), Flat3d(path[(i + 1) % path.Count]), Color.green, displayTime); }
             Debug.DrawRay(Flat3d(current), Vector3.up, Color.blue, displayTime);
             //sort the closest nodes by distance to end
-            System.Array.Sort(closest, (a, b) => Vector3.Distance(a, end).CompareTo(Vector3.Distance(b, end)));
+            //System.Array.Sort(closest, (a, b) => Vector2.Distance(a, end).CompareTo(Vector2.Distance(b, end)));
+            //weighted sort closest based on what moves closer to the end and also what is the closest to the current node
+
+            Array.Sort(closest, (a, b) =>
+            {
+                float distanceA = Vector2.Distance(a, end);
+                float distanceB = Vector2.Distance(b, end);
+                float distanceToCurrentA = Vector2.Distance(a, current);
+                float distanceToCurrentB = Vector2.Distance(b, current);
+                
+
+                // Apply the closeness bias
+                distanceA += closenessBias * distanceToCurrentA;
+                distanceB += closenessBias * distanceToCurrentB;
+
+                if (distanceA < distanceB)
+                {
+                    return -1;
+                }
+                else if (distanceA > distanceB)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            });
             bool found = false;
             for (int i = 0; i < closest.Length; i++)
             {
@@ -83,10 +110,10 @@ public class PathFinder : MonoBehaviour
                 }
             }
             if (!found) { 
-                depth++; 
+                depth++;
                 closest = ClosestDepthToPoint(current, depth); 
                 Debug.Log($"Increasing Depth: {depth}");
-                if(depth > 10){Debug.LogError("DepthToo High"); return null;} 
+                if(depth > 5){Debug.LogError("DepthToo High"); return null;} 
             }
             await Task.Delay((int)speed * 1000);
             //if the editor stopped, break the loop
