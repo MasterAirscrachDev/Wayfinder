@@ -23,18 +23,12 @@ public class PathFinder : MonoBehaviour
         if (s != null) { start = new Vector2(s.transform.position.x, s.transform.position.z); }
         if (e != null) { end = new Vector2(e.transform.position.x, e.transform.position.z); }
         if(start != Vector2.zero && end != Vector2.zero)
-        {
-            Pathing(start, end);
-        }
+        { Pathing(start, end); }
         else
-        {
-            Debug.LogError("Start or End point not found");
-        }
+        { Debug.LogError("Start or End point not found"); }
     }
     async Task Pathing(Vector2 start, Vector2 end){
         Vector2[] path = await NodesOnPath(start, end);
-        // for (int i = 0; i < path.Length - 1; i++)
-        // { Debug.DrawLine(path[i], path[(i + 1) % path.Length], Color.red, 1000); }
         LineRenderer line = gameObject.AddComponent<LineRenderer>();
         line.positionCount = path.Length;
         line.SetPositions(ArrayDimesionShift(path));
@@ -59,8 +53,6 @@ public class PathFinder : MonoBehaviour
             for(int i = 0; i < path.Count - 1; i++)
             { Debug.DrawLine(Flat3d(path[i]), Flat3d(path[(i + 1) % path.Count]), Color.green, displayTime); }
             Debug.DrawRay(Flat3d(current), Vector3.up, Color.blue, displayTime);
-            //sort the closest nodes by distance to end
-            //System.Array.Sort(closest, (a, b) => Vector2.Distance(a, end).CompareTo(Vector2.Distance(b, end)));
             //weighted sort closest based on what moves closer to the end and also what is the closest to the current node
 
             Array.Sort(closest, (a, b) =>
@@ -69,31 +61,19 @@ public class PathFinder : MonoBehaviour
                 float distanceB = Vector2.Distance(b, end);
                 float distanceToCurrentA = Vector2.Distance(a, current);
                 float distanceToCurrentB = Vector2.Distance(b, current);
-                
-
                 // Apply the closeness bias
                 distanceA += closenessBias * distanceToCurrentA;
                 distanceB += closenessBias * distanceToCurrentB;
 
-                if (distanceA < distanceB)
-                {
-                    return -1;
-                }
-                else if (distanceA > distanceB)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
+                if (distanceA < distanceB) { return -1; }
+                else if (distanceA > distanceB) { return 1; }
+                else { return 0; }
             });
             bool found = false;
             for (int i = 0; i < closest.Length; i++)
             {
                 if (closest[i] == start) { continue; } //if its the start, skip
-                if (Vector2.Distance(closest[i], end) < 0.1f) //if its the end, add it to the path and break
-                {
+                if (Vector2.Distance(closest[i], end) < 0.1f){ //if its the end, add it to the path and break
                     done = true;
                     path.Add(end);
                     found = true;
@@ -132,26 +112,21 @@ public class PathFinder : MonoBehaviour
     }
     bool AddPointSafely(Vector2 newPoint, Vector2 current, Vector2 end){
         float newToEnd = Vector2.Distance(newPoint, end), currentToEnd = Vector2.Distance(current, end), currentToNew = Vector2.Distance(current, newPoint);
-        if(newToEnd < currentToEnd){
-            return true;
-        } else if(currentToNew < currentToEnd / 2){
-            return true;
-        }
+        if(newToEnd < currentToEnd){ return true; } 
+        else if(currentToNew < currentToEnd / 2){ return true; }
         return false;
     }
 
     Vector2[] ClosestDepthToPoint(Vector2 point, int depth = 3, float displayTime = 1f){
         System.Array.Sort(nodes, (a, b) => Vector2.Distance(a, point).CompareTo(Vector2.Distance(b, point)));
         Vector2[] closestPoints = new Vector2[depth];
-        for (int i = 1; i < depth + 1; i++) //start at 1 to skip the current node
-        { 
+        for (int i = 1; i < depth + 1; i++){ //start at 1 to skip the current node 
             closestPoints[i-1] = nodes[i];
             //Debug.Log($"Closest Point {i}/{depth}: {nodes[i]}");
             Debug.DrawLine(Flat3d(point), Flat3d(nodes[i]) + (Vector3.up * (0.3f * (i + 1))), Color.yellow, displayTime);
         }
         return closestPoints;
     }
-    Vector3 Flat3d(Vector2 point){
-        return new Vector3(point.x, 1.5f, point.y);
-    }
+    //converts a 2d point to a 3d point (using depth not height)
+    Vector3 Flat3d(Vector2 point){ return new Vector3(point.x, 1.5f, point.y); }
 }
